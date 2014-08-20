@@ -9,7 +9,7 @@ Fisp amd 测试项目
 
 ## 修改步骤说明
 
-1. 安装 `fis-postprocessor-amd`.
+1. 安装 [fis-postprocessor-amd](https://github.com/fex-team/fis-postprocessor-amd).
 
     ```bash
     npm install fis-postprocessor-amd -g
