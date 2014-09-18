@@ -1,8 +1,12 @@
-define(['echarts', 'echarts/chart/bar'], function(ec) {
+define(function(require) {
+    var ec = require('echarts');
+
+    require('echarts/chart/bar');
+
     return function() {
         // 基于准备好的dom，初始化echarts图表
-        var myChart = ec.init(document.getElementById('main')); 
-        
+        var myChart = ec.init(document.getElementById('main'));
+
         var option = {
             tooltip: {
                 show: true
@@ -30,7 +34,7 @@ define(['echarts', 'echarts/chart/bar'], function(ec) {
             ]
         };
 
-        // 为echarts对象加载数据 
-        myChart.setOption(option); 
+        // 为echarts对象加载数据
+        myChart.setOption(option);
     }
 });

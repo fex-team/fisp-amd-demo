@@ -1,5 +1,5 @@
 <!doctype html>
-{%html lang="en" framework="amdtest:static/js/mod-amd.js"%}
+{%html lang="en" framework="amdtest:static/js/esl.js"%}
     {%head%}
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -15,7 +15,7 @@
             {%widget name="amdtest:widget/header/header.tpl" navs=$navs%}
 
             {%block name="beforecontent"%}{%/block%}
-            
+
             <div id="middle" class="container">
                 {%block name="content"%}{%/block%}
             </div>
