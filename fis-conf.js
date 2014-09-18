@@ -1,4 +1,5 @@
 fis.config.set('namespace', 'amdtest');
+fis.config.set('project.exclude', /^\/plugin\/test\/.*/i);
 
 fis.config.set('modules.postprocessor.tpl', 'amd');
 fis.config.set('modules.postprocessor.js', 'amd');
