@@ -1,5 +1,5 @@
 <!doctype html>
-{%html lang="en" framework="amdtest:static/js/esl.js"%}
+{%html lang="en" framework="common:static/js/esl.js"%}
     {%head%}
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -7,12 +7,12 @@
         <meta name="description" content="">
         <meta name="author" content="">
         <title>{%$title%}</title>
-        {%require name="amdtest:static/css/style.css"%}
+        {%require name="common:static/css/style.css"%}
     {%/head%}
 
     {%body%}
         <div id="wrapper">
-            {%widget name="amdtest:widget/header/header.tpl" navs=$navs%}
+            {%widget name="common:widget/header/header.tpl" navs=$navs%}
 
             {%block name="beforecontent"%}{%/block%}
 
@@ -22,10 +22,10 @@
 
             {%block name="aftercontent"%}{%/block%}
 
-            {%widget name="amdtest:widget/footer/footer.tpl"%}
+            {%widget name="common:widget/footer/footer.tpl"%}
         </div>
 
     {%/body%}
 
-    {%require name="amdtest:page/layout.tpl"%}
+    {%require name="common:page/layout.tpl"%}
 {%/html%}

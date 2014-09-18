@@ -1,17 +1,19 @@
 fis.config.set('namespace', 'amdtest');
-fis.config.set('project.exclude', /^\/plugin\/test\/.*/i);
-
 fis.config.set('modules.postprocessor.tpl', 'amd');
 fis.config.set('modules.postprocessor.js', 'amd');
 
 fis.config.set('settings.postprocessor.amd', {
     baseUrl: './widget',
     packages: [
+
+        // zrender 模块下的
         {
             name: 'zrender',
-            location: 'lib/zrender',
+            location: 'common:widget/lib/zrender',
             main: 'zrender'
         },
+
+        // 本模块下的
 
         {
             name: 'echarts',
@@ -22,6 +24,5 @@ fis.config.set('settings.postprocessor.amd', {
 });
 
 fis.config.set('pack', {
-    'pkg/lib/zrender.js': 'widget/lib/zrender/**.js',
     'pkg/lib/echart.js': 'widget/lib/echarts/**.js'
 });

@@ -1,4 +1,4 @@
-{%extends file="./layout.tpl"%}
+{%extends file="common/page/layout.tpl"%}
 
 {%block name="content"%}
 <div id="main" style="height:400px"></div>
@@ -6,7 +6,7 @@
 define('router', function() {
     require(['/app/zrender.js'], function (app) {
         app();
-    }); 
+    });
 });
 require(['router']);
 {%/script%}
