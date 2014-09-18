@@ -1,5 +1,6 @@
 <!doctype html>
-{%html lang="en" framework="common:static/js/esl.js"%}
+{%html lang="en" framework="common:static/js/require.js"%}
+
     {%head%}
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -25,7 +26,6 @@
             {%widget name="common:widget/footer/footer.tpl"%}
         </div>
 
+        {%require name="common:page/layout.tpl"%}
     {%/body%}
-
-    {%require name="common:page/layout.tpl"%}
 {%/html%}
