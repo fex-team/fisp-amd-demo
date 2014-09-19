@@ -7,9 +7,9 @@ Fisp amd 测试项目
 
 **我们的目标是支持所有的 amd 用法，如果发现有不支持的用法，请提交示例，我们第一时间修复！**
 
-## 修改步骤说明
+## 如何让 fisp 支持 amd?
 
-1. 安装 [fis-postprocessor-amd](https://github.com/fex-team/fis-postprocessor-amd).
+1. 安装 [fis-postprocessor-amd](https://github.com/fex-team/fis-postprocessor-amd) 编译插件.
 
     ```bash
     npm install fis-postprocessor-amd -g
@@ -23,6 +23,7 @@ Fisp amd 测试项目
 3. 修改 framework 为新的 [mod-amd.js](https://raw.githubusercontent.com/fex-team/mod/master/mod-amd.js)，或者可以直接使用 els.js 或者 require.js. 原来的 mod.js 已经不能使用了。
 
 4. 修改 plugin/FISResource.class.php 替换成本项目下 plugin 目录下的 FISResource.class.php 文件
+5. 更多信息请查看 [fis-postprocessor-amd 说明](https://github.com/fex-team/fis-postprocessor-amd)
 
 ## 兼容性问题
 
