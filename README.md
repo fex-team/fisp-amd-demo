@@ -20,28 +20,9 @@ Fisp amd 测试项目
     fis.config.set('modules.postprocessor.tpl', 'amd');
     fis.config.set('modules.postprocessor.js', 'amd');
     ```
-3. 修改 framework 为新的 [mod-amd.js](https://raw.githubusercontent.com/fex-team/mod/master/mod-amd.js)。原来的 mod.js 已经不能适用。
-4. 修改 plugin/FISResource.class.php 把原来的生成 resourceMap 的逻辑删了。
+3. 修改 framework 为新的 [mod-amd.js](https://raw.githubusercontent.com/fex-team/mod/master/mod-amd.js)，或者可以直接使用 els.js 或者 require.js. 原来的 mod.js 已经不能使用了。
 
-    ```php
-    private static function getModJsHtml(){
-        $html = '';
--       self::getResourceMap();
-+       $resourceMap = false; // self::getResourceMap();
--       $loadModJs = (self::$framework && (isset(self::$arrStaticCollection['js']) || $resourceMap));
-+       $loadModJs = true; // (self::$framework && (isset(self::$arrStaticCollection['js']) || $resourceMap));
-        //require.resourceMap要在mod.js加载以后执行
-        if ($loadModJs) {
-            $html .= '<script type="text/javascript" src="' . self::$framework . '"></script>' . PHP_EOL;
-        }
-        if ($resourceMap) {
-            $html .= '<script type="text/javascript">';
-            $html .= 'require.resourceMap('.$resourceMap.');';
-            $html .= '</script>';
-        }
-        return $html;
-    }
-    ```
+4. 修改 plugin/FISResource.class.php 替换成本项目下 plugin 目录下的 FISResource.class.php 文件
 
 ## 兼容性问题
 
