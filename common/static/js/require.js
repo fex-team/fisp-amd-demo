@@ -2052,3 +2052,7 @@ var requirejs, require, define;
     //Set up with config info.
     req(cfg);
 }(this));
+
+// 修改 require.js
+// 由于 fis 中生成的 module id 格式为 xxx:path 这种格式，被认为是 url 导致 require.js 会发请求
+require.jsExtRegExp = /^\/|:\/\/|\?|\.js$/;
