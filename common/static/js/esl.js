@@ -26,15 +26,6 @@ var esl;
     var modModules = {};
 
     /**
-     * 模块容器副本，不包含resource
-     * 在modAnalyse时，从list里遍历比forin更高效
-     *
-     * @inner
-     * @type {Array}
-     */
-    var modModuleList = [];
-
-    /**
      * 自动定义的模块表
      *
      * 模块define factory是用到时才执行，但是以下几种情况需要自动马上执行：
@@ -135,7 +126,7 @@ var esl;
      *
      * @type {string}
      */
-    require.version = '1.8.4';
+    require.version = '1.8.6';
 
     /**
      * loader名称
@@ -186,8 +177,8 @@ var esl;
                 }
             }
 
-            var module = modModules[id];
-            if (!module) {
+            var mod = modModules[id];
+            if (!mod) {
                 if (!missModulesMap[id]) {
                     missModulesMap[id] = 1;
                     missModules.push(id);
@@ -200,7 +191,7 @@ var esl;
                 }
 
                 each(
-                    module.depMs,
+                    mod.depMs,
                     function (dep) {
                         checkError(dep.absId, dep.hard);
                     }
@@ -287,7 +278,6 @@ var esl;
             if (tryDefineTimeout) {
                 clearTimeout(tryDefineTimeout);
             }
-            tryDefineTimeout = setTimeout(modAnalyse, 1);
         }
         else {
             // 纪录到共享变量中，在load或readystatechange中处理
@@ -325,6 +315,8 @@ var esl;
      * @param {*} factory 模块定义函数或模块对象
      */
     function modPreDefine(id, dependencies, factory) {
+        // 将模块存入容器
+        //
         // 模块内部信息包括
         // -----------------------------------
         // id: module id
@@ -342,7 +334,7 @@ var esl;
         // depPMs: 用于加载资源的模块集合，key是模块名，value是1，仅用于快捷查找
         // ------------------------------------
         if (!modModules[id]) {
-            var module = {
+            modModules[id] = {
                 id          : id,
                 depsDec     : dependencies,
                 deps        : dependencies || ['require', 'exports', 'module'],
@@ -357,10 +349,6 @@ var esl;
                 depRs       : [],
                 depPMs      : []
             };
-
-            // 将模块存入容器
-            modModules[id] = module;
-            modModuleList.push(module);
         }
     }
 
@@ -374,112 +362,92 @@ var esl;
      * modAnalyse完成后续的依赖分析处理，并进行依赖模块的加载
      *
      * @inner
-     * @param {Object} modules 模块对象
+     * @param {string} id 模块id
      */
-    function modAnalyse() {
-        var requireModules = [];
-        var requireModulesIndex = {};
-
-        /**
-         * 添加需要请求的模块
-         *
-         * @inner
-         * @param {string} id 模块id
-         */
-        function addRequireModule(id) {
-            if (modModules[id] || requireModulesIndex[id]) {
-                return;
-            }
-
-            requireModules.push(id);
-            requireModulesIndex[id] = 1;
+    function modAnalyse(id) {
+        var mod = modModules[id];
+        if (!mod || modIs(id, MODULE_ANALYZED)) {
+            return;
         }
 
-        each(modModuleList, function (module) {
-            if (module.state > MODULE_PRE_DEFINED) {
-                return;
+        var deps = mod.deps;
+        var factory = mod.factory;
+        var hardDependsCount = 0;
+
+        // 分析function body中的require
+        // 如果包含显式依赖声明，根据AMD规定和性能考虑，可以不分析factoryBody
+        if (typeof factory === 'function') {
+            hardDependsCount = Math.min(factory.length, deps.length);
+
+            // If the dependencies argument is present, the module loader
+            // SHOULD NOT scan for dependencies within the factory function.
+            !mod.depsDec && factory.toString()
+                .replace(/(\/\*([\s\S]*?)\*\/|([^:]|^)\/\/(.*)$)/mg, '')
+                .replace(/require\(\s*(['"'])([^'"]+)\1\s*\)/g,
+                    function ($0, $1, depId) {
+                        deps.push(depId);
+                    }
+                );
+        }
+
+        var requireModules = [];
+        each(deps, function (depId, index) {
+            var idInfo = parseId(depId);
+            var absId = normalize(idInfo.mod, id);
+            var moduleInfo;
+            var resInfo;
+
+            if (absId && !BUILDIN_MODULE[absId]) {
+                // 如果依赖是一个资源，将其信息添加到module.depRs
+                //
+                // module.depRs中的项有可能是重复的。
+                // 在这个阶段，加载resource的module可能还未defined，
+                // 导致此时resource id无法被normalize。
+                //
+                // 比如对a/b/c而言，下面几个resource可能指的是同一个资源：
+                // - js!../name.js
+                // - js!a/name.js
+                // - ../../js!../name.js
+                //
+                // 所以加载资源的module ready时，需要遍历module.depRs进行处理
+                if (idInfo.res) {
+                    resInfo = {
+                        id: depId,
+                        mod: absId,
+                        res: idInfo.res
+                    };
+                    autoDefineModules[absId] = 1;
+                    mod.depPMs.push(absId);
+                    mod.depRs.push(resInfo);
+                }
+
+                // 对依赖模块的id normalize能保证正确性，在此处进行去重
+                moduleInfo = mod.depMkv[absId];
+                if (!moduleInfo) {
+                    moduleInfo = {
+                        id      : idInfo.mod,
+                        absId   : absId,
+                        hard    : index < hardDependsCount
+                    };
+                    mod.depMs.push(moduleInfo);
+                    mod.depMkv[absId] = moduleInfo;
+                    requireModules.push(absId);
+                }
+            }
+            else {
+                moduleInfo = {absId: absId};
             }
 
-            var deps = module.deps;
-            var hardDependsCount = 0;
-            var factory = module.factory;
-
-            // 分析function body中的require
-            // 如果包含显式依赖声明，根据AMD规定和性能考虑，可以不分析factoryBody
-            if (typeof factory === 'function') {
-                hardDependsCount = Math.min(factory.length, deps.length);
-
-                // If the dependencies argument is present, the module loader
-                // SHOULD NOT scan for dependencies within the factory function.
-                !module.depsDec && factory.toString()
-                    .replace(/(\/\*([\s\S]*?)\*\/|([^:]|^)\/\/(.*)$)/mg, '')
-                    .replace(/require\(\s*(['"'])([^'"]+)\1\s*\)/g,
-                        function ($0, $1, depId) {
-                            deps.push(depId);
-                        }
-                    );
+            // 如果当前正在分析的依赖项是define中声明的，
+            // 则记录到module.factoryDeps中
+            // 在factory invoke前将用于生成invoke arguments
+            if (index < hardDependsCount) {
+                mod.factoryDeps.push(resInfo || moduleInfo);
             }
-
-            each(deps, function (depId, index) {
-                var idInfo = parseId(depId);
-                var absId = normalize(idInfo.module, module.id);
-                var moduleInfo;
-                var resInfo;
-
-                if (absId && !BUILDIN_MODULE[absId]) {
-                    // 如果依赖是一个资源，将其信息添加到module.depRs
-                    //
-                    // module.depRs中的项有可能是重复的。
-                    // 在这个阶段，加载resource的module可能还未defined，
-                    // 导致此时resource id无法被normalize。
-                    //
-                    // 比如对a/b/c而言，下面几个resource可能指的是同一个资源：
-                    // - js!../name.js
-                    // - js!a/name.js
-                    // - ../../js!../name.js
-                    //
-                    // 所以加载资源的module ready时，需要遍历module.depRs进行处理
-                    if (idInfo.resource) {
-                        resInfo = {
-                            id       : depId,
-                            module   : absId,
-                            resource : idInfo.resource
-                        };
-                        autoDefineModules[absId] = 1;
-                        module.depPMs.push(absId);
-                        module.depRs.push(resInfo);
-                    }
-
-                    // 对依赖模块的id normalize能保证正确性，在此处进行去重
-                    moduleInfo = module.depMkv[absId];
-                    if (!moduleInfo) {
-                        moduleInfo = {
-                            id      : idInfo.module,
-                            absId   : absId,
-                            hard    : index < hardDependsCount
-                        };
-                        module.depMs.push(moduleInfo);
-                        module.depMkv[absId] = moduleInfo;
-                        addRequireModule(absId);
-                    }
-                }
-                else {
-                    moduleInfo = { absId: absId };
-                }
-
-                // 如果当前正在分析的依赖项是define中声明的，
-                // 则记录到module.factoryDeps中
-                // 在factory invoke前将用于生成invoke arguments
-                if (index < hardDependsCount) {
-                    module.factoryDeps.push(resInfo || moduleInfo);
-                }
-            });
-
-            module.state = MODULE_ANALYZED;
-            modInitFactoryInvoker(module.id);
         });
 
-        modAutoInvoke();
+        mod.state = MODULE_ANALYZED;
+        modInitFactoryInvoker(id);
         nativeRequire(requireModules);
     }
 
@@ -514,11 +482,11 @@ var esl;
             }
 
             visited[id] = 1;
-            var module = modModules[id];
+            var mod = modModules[id];
             var prepared = true;
 
             each(
-                module.depMs,
+                mod.depMs,
                 function (dep) {
                     return (prepared = update(dep.absId));
                 }
@@ -527,7 +495,7 @@ var esl;
             // 判断resource是否加载完成。如果resource未加载完成，则认为未准备好
             /* jshint ignore:start */
             prepared && each(
-                module.depRs,
+                mod.depRs,
                 function (dep) {
                     prepared = !!(dep.absId && modIs(dep.absId, MODULE_DEFINED));
                     return prepared;
@@ -536,7 +504,7 @@ var esl;
             /* jshint ignore:end */
 
             if (prepared) {
-                module.state = MODULE_PREPARED;
+                mod.state = MODULE_PREPARED;
             }
 
             return prepared;
@@ -550,21 +518,21 @@ var esl;
      * @param {string} id 模块id
      */
     function modInitFactoryInvoker(id) {
-        var module = modModules[id];
+        var mod = modModules[id];
         var invoking;
 
-        module.invokeFactory = invokeFactory;
+        mod.invokeFactory = invokeFactory;
         each(
-            module.depPMs,
+            mod.depPMs,
             function (pluginModuleId) {
 
                 modAddDefinedListener(
                     pluginModuleId,
                     function () {
-                        each(module.depRs, function (res) {
-                            if (!res.absId && res.module === pluginModuleId) {
+                        each(mod.depRs, function (res) {
+                            if (!res.absId && res.mod === pluginModuleId) {
                                 res.absId = normalize(res.id, id);
-                                nativeRequire([ res.absId ], modAutoInvoke);
+                                nativeRequire([res.absId], modAutoInvoke);
                             }
                         });
                     }
@@ -579,7 +547,7 @@ var esl;
          * @inner
          */
         function invokeFactory() {
-            if (invoking || module.state !== MODULE_PREPARED) {
+            if (invoking || mod.state !== MODULE_PREPARED) {
                 return;
             }
 
@@ -589,7 +557,7 @@ var esl;
             var factoryReady = 1;
             var factoryDeps = [];
             each(
-                module.factoryDeps,
+                mod.factoryDeps,
                 function (dep) {
                     var depId = dep.absId;
 
@@ -610,30 +578,31 @@ var esl;
                     var args = modGetModulesExports(
                         factoryDeps,
                         {
-                            require : module.require,
-                            exports : module.exports,
-                            module  : module
+                            require : mod.require,
+                            exports : mod.exports,
+                            module  : mod
                         }
                     );
 
                     // 调用factory函数初始化module
-                    var factory = module.factory;
+                    var factory = mod.factory;
                     var exports = typeof factory === 'function'
                         ? factory.apply(global, args)
                         : factory;
 
                     if (exports != null) {
-                        module.exports = exports;
+                        mod.exports = exports;
                     }
 
-                    module.invokeFactory = null;
+                    mod.invokeFactory = null;
+                    delete autoDefineModules[id];
                 }
                 catch (ex) {
                     invoking = 0;
                     if (/^\[MODULE_MISS\]"([^"]+)/.test(ex.message)) {
                         // 出错，则说明在factory的运行中，该require的模块是需要的
                         // 所以把它加入强依赖中
-                        var hardCirclurDep = module.depMkv[RegExp.$1];
+                        var hardCirclurDep = mod.depMkv[RegExp.$1];
                         hardCirclurDep && (hardCirclurDep.hard = 1);
                         return;
                     }
@@ -667,10 +636,10 @@ var esl;
      * @param {string} id 模块id
      */
     function modTryInvokeFactory(id) {
-        var module = modModules[id];
+        var mod = modModules[id];
 
-        if (module && module.invokeFactory) {
-            module.invokeFactory();
+        if (mod && mod.invokeFactory) {
+            mod.invokeFactory();
         }
     }
 
@@ -734,8 +703,8 @@ var esl;
      */
     function modDefined(id) {
         var listeners = modDefinedListeners[id] || [];
-        var module = modModules[id];
-        module.state = MODULE_DEFINED;
+        var mod = modModules[id];
+        mod.state = MODULE_DEFINED;
 
         var len = listeners.length;
         while (len--) {
@@ -793,16 +762,16 @@ var esl;
     function completePreDefine(currentId) {
         // HACK: 这里在IE下有个性能陷阱，不能使用任何变量。
         //       否则貌似会形成变量引用和修改的读写锁，导致wait4PreDefine释放困难
-        each(wait4PreDefine, function (module) {
+        each(wait4PreDefine, function (mod) {
             modPreDefine(
                 currentId,
-                module.deps,
-                module.factory
+                mod.deps,
+                mod.factory
             );
         });
 
         wait4PreDefine.length = 0;
-        modAnalyse();
+        modAnalyse(currentId);
     }
 
     /**
@@ -828,12 +797,10 @@ var esl;
         noRequests = noRequests || {};
         var isCallbackCalled = 0;
         if (ids instanceof Array) {
-            modAutoInvoke();
             tryFinishRequire();
 
             if (!isCallbackCalled) {
                 each(ids, function (id) {
-
                     if (!(BUILDIN_MODULE[id] || modIs(id, MODULE_DEFINED))) {
                         modAddDefinedListener(id, tryFinishRequire);
 
@@ -843,9 +810,12 @@ var esl;
                                 : loadModule
                             )(id, baseId);
                         }
-                    }
 
+                        modAnalyse(id);
+                    }
                 });
+
+                modAutoInvoke();
             }
         }
 
@@ -930,6 +900,10 @@ var esl;
                 script = null;
 
                 completePreDefine(moduleId);
+                for (var key in autoDefineModules) {
+                    modAnalyse(key);
+                }
+                modAutoInvoke();
             }
         }
     }
@@ -990,14 +964,14 @@ var esl;
                 : actualGlobalRequire;
 
             plugin.load(
-                idInfo.resource,
+                idInfo.res,
                 pluginRequire,
                 pluginOnload,
-                moduleConfigGetter.call({ id: pluginAndResource })
+                moduleConfigGetter.call({id: pluginAndResource})
             );
         }
 
-        load(modGetModuleExports(idInfo.module));
+        load(modGetModuleExports(idInfo.mod));
     }
 
     /**
@@ -1200,7 +1174,7 @@ var esl;
             item.v = mapIndex;
 
             if (!(value instanceof Array)) {
-                value = [ value ];
+                value = [value];
             }
 
             each(value, function (meetId) {
@@ -1299,7 +1273,7 @@ var esl;
                         nativeRequire(normalize(requireId, baseId));
                 }
 
-                return requiredCache[ requireId ];
+                return requiredCache[requireId];
             }
             else if (requireId instanceof Array) {
                 // 分析是否有resource，取出pluginModule先
@@ -1311,11 +1285,11 @@ var esl;
                     requireId,
                     function (id, i) {
                         var idInfo = parseId(id);
-                        var absId = normalize(idInfo.module, baseId);
+                        var absId = normalize(idInfo.mod, baseId);
                         pureModules.push(absId);
                         autoDefineModules[absId] = 1;
 
-                        if (idInfo.resource) {
+                        if (idInfo.res) {
                             pluginModules.push(absId);
                             normalizedIds[i] = null;
                         }
@@ -1407,8 +1381,8 @@ var esl;
             return id;
         }
 
-        var resourceId = idInfo.resource;
-        var moduleId = relative2absolute(idInfo.module, baseId);
+        var resourceId = idInfo.res;
+        var moduleId = relative2absolute(idInfo.mod, baseId);
 
         each(
             packagesIndex,
@@ -1439,9 +1413,9 @@ var esl;
         );
 
         if (resourceId) {
-            var module = modGetModuleExports(moduleId);
-            resourceId = module.normalize
-                ? module.normalize(
+            var mod = modGetModuleExports(moduleId);
+            resourceId = mod.normalize
+                ? mod.normalize(
                     resourceId,
                     function (resId) {
                         return normalize(resId, baseId);
@@ -1513,8 +1487,8 @@ var esl;
 
         if (segs[0]) {
             return {
-                module   : segs[0],
-                resource : segs[1]
+                mod: segs[0],
+                res: segs[1]
             };
         }
 
