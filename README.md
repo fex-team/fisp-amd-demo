@@ -12,6 +12,31 @@ Fisp amd 测试项目
 现有太多 amd 组件、模块都是以 amdjs 规范使用的，原来的 mod.js 不支持，导致每次都要手动修改后才能在 fis 中使用。
 非常不便于维护与升级。
 
+## 体验此demo
+1. git clone 下来此仓库。
+    
+    ```
+    git clone git@github.com:fex-team/fis-amd-demo.git
+    ```
+2.  更新 submodule，由于要修改 fisp smarty 插件，记得一定要用最新的 plugin.
+
+    ```
+    git submodule init
+    git submodule update
+    ```
+3. release 模块
+
+    ```
+    fisp release -r common
+    fisp release -r amdtest
+    ```
+4. 开启服务。
+    
+    ```
+    fisp server start
+    ```
+5. 打开 `http://127.0.0.1:8080/amdtest/page/echarts` 开始预览。
+
 ## 如何让 fisp 支持 amd?
 
 1. 安装 [fis-postprocessor-amd](https://github.com/fex-team/fis-postprocessor-amd) 编译插件.
