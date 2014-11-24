@@ -16,7 +16,7 @@ Fisp amd 测试项目
 1. git clone 下来此仓库。
     
     ```
-    git clone git@github.com:fex-team/fis-amd-demo.git
+    git clone git@github.com:fex-team/fisp-amd-demo.git
     ```
 2.  更新 submodule，由于要修改 fisp smarty 插件，记得一定要用最新的 plugin.
 
