@@ -14,7 +14,7 @@ Fisp amd 测试项目
 
 ## 体验此demo
 1. git clone 下来此仓库。
-    
+
     ```
     git clone git@github.com:fex-team/fis-amd-demo.git
     ```
@@ -31,7 +31,7 @@ Fisp amd 测试项目
     fisp release -r amdtest
     ```
 4. 开启服务。
-    
+
     ```
     fisp server start
     ```
@@ -50,16 +50,21 @@ Fisp amd 测试项目
     fis.config.set('modules.postprocessor.tpl', 'amd');
     fis.config.set('modules.postprocessor.js', 'amd');
     ```
-3. 修改 framework 为新的 [mod-amd.js](https://raw.githubusercontent.com/fex-team/mod/master/mod-amd.js)，或者可以直接使用 els.js 或者 require.js. 原来的 mod.js 已经不能使用了。
+3. 有两种方案:
 
-4. 修改 plugin/FISResource.class.php 替换成本项目下 plugin 目录下的 FISResource.class.php 文件
+    * 此方案比较简单，但是不够标准，推荐老项目升级使用。
+
+        1. 使用此项目中 /common/static/js/mod.js。
+    * 此方法相对复杂点，但是比较合理，推荐新项目使用。
+
+        1. 修改 framework 为新的 [mod-amd.js](https://raw.githubusercontent.com/fex-team/mod/master/mod-amd.js)，或者可以直接使用 els.js 或者 require.js.
+        2. 修改 plugin/FISResource.class.php 替换成本项目下 plugin 目录下的 FISResource.class.php 文件。
+
 5. 更多信息请查看 [fis-postprocessor-amd 说明](https://github.com/fex-team/fis-postprocessor-amd)
 
 ## 兼容性问题
 
-除了 `require.async` 外，其他写法都兼容。其实原来的写法 `require.async(id | deps, callback)` 等价于 `require(deps, callback)`。
-
-另外不在 `define` 中的 require(id) 这种用法，不是 amd 的标准用法，但是有很多老用户是这么写的，所以做了兼容处理，但是不推荐这么用, 因为这样你是没法把 mod-amd.js 直接换成 require.js 使用。
+不用担心，对于原来 require.async 和 require(id) 非标准 amd 用法都兼容。
 
 ## 注意
 
